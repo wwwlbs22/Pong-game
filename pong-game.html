@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong Game</title>
+    <style>
+        body { display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000; }
+        canvas { border: 1px solid white; }
+        h1 { color: white; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>Pong Game</h1>
+    <canvas id="pong" width="800" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById('pong');
+        const ctx = canvas.getContext('2d');
+
+        // Create the pong paddle
+        const paddleWidth = 10, paddleHeight = 100;
+        const playerPaddle = { x: 0, y: canvas.height / 2 - paddleHeight / 2, width: paddleWidth, height: paddleHeight, color: 'white', dy: 0 };
+        const aiPaddle = { x: canvas.width - paddleWidth, y: canvas.height / 2 - paddleHeight / 2, width: paddleWidth, height: paddleHeight, color: 'white' };
+
+        // Create the ball
+        const ball = { x: canvas.width / 2, y: canvas.height / 2, size: 10, speed: 5, velocityX: 5, velocityY: 5, color: 'white' };
+
+        let playerScore = 0, aiScore = 0;
+
+        // Control the player paddle
+        document.addEventListener('mousemove', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            playerPaddle.y = event.clientY - rect.top - playerPaddle.height / 2;
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowUp') playerPaddle.dy = -8;
+            if (event.key === 'ArrowDown') playerPaddle.dy = 8;
+        });
+
+        document.addEventListener('keyup', (event) => {
+            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') playerPaddle.dy = 0;
+        });
+
+        // Update game elements
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.velocityX = -ball.velocityX;
+        }
+
+        function update() {
+            playerPaddle.y += playerPaddle.dy;
+            if (playerPaddle.y < 0) playerPaddle.y = 0;
+            if (playerPaddle.y + playerPaddle.height > canvas.height) playerPaddle.y = canvas.height - playerPaddle.height;
+
+            aiPaddle.y += (ball.y - (aiPaddle.y + aiPaddle.height / 2)) * 0.1;
+            if (aiPaddle.y < 0) aiPaddle.y = 0;
+            if (aiPaddle.y + aiPaddle.height > canvas.height) aiPaddle.y = canvas.height - aiPaddle.height;
+
+            ball.x += ball.velocityX;
+            ball.y += ball.velocityY;
+
+            // Ball collision with top and bottom
+            if (ball.y + ball.size > canvas.height || ball.y - ball.size < 0) {
+                ball.velocityY = -ball.velocityY;
+            }
+
+            // Ball collision with paddles
+            if (ball.x - ball.size < playerPaddle.x + playerPaddle.width &&
+                ball.y > playerPaddle.y && ball.y < playerPaddle.y + playerPaddle.height) {
+                ball.velocityX = -ball.velocityX;
+            }
+            if (ball.x + ball.size > aiPaddle.x &&
+                ball.y > aiPaddle.y && ball.y < aiPaddle.y + aiPaddle.height) {
+                ball.velocityX = -ball.velocityX;
+            }
+
+            // Score update
+            if (ball.x - ball.size < 0) {
+                aiScore++;
+                resetBall();
+            }
+            if (ball.x + ball.size > canvas.width) {
+                playerScore++;
+                resetBall();
+            }
+        }
+
+        // Render the game
+        function draw() {
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = playerPaddle.color;
+            ctx.fillRect(playerPaddle.x, playerPaddle.y, playerPaddle.width, playerPaddle.height);
+            ctx.fillStyle = aiPaddle.color;
+            ctx.fillRect(aiPaddle.x, aiPaddle.y, aiPaddle.width, aiPaddle.height);
+
+            ctx.fillStyle = ball.color;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.size, 0, Math.PI * 2, false);
+            ctx.fill();
+
+            // Draw the scoreboard
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Player: ${playerScore}`, 50, 20);
+            ctx.fillText(`AI: ${aiScore}`, canvas.width - 100, 20);
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+    </script>
+</body>
+</html>
