@@ -1,120 +1,115 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pong Game</title>
+    <title>Mini Temple Run</title>
     <style>
-        body { display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000; }
-        canvas { border: 1px solid white; }
-        h1 { color: white; text-align: center; }
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background: #222; }
+        canvas { display: block; background: #4ec0ca; margin: 0 auto; border: 5px solid #fff; }
+        .score { position: absolute; top: 20px; left: 20px; color: white; font-size: 24px; }
     </style>
 </head>
 <body>
-    <h1>Pong Game</h1>
-    <canvas id="pong" width="800" height="400"></canvas>
+    <div class="score">Score: <span id="scoreVal">0</span></div>
+    <canvas id="gameCanvas"></canvas>
+
     <script>
-        const canvas = document.getElementById('pong');
+        const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('scoreVal');
 
-        // Create the pong paddle
-        const paddleWidth = 10, paddleHeight = 100;
-        const playerPaddle = { x: 0, y: canvas.height / 2 - paddleHeight / 2, width: paddleWidth, height: paddleHeight, color: 'white', dy: 0 };
-        const aiPaddle = { x: canvas.width - paddleWidth, y: canvas.height / 2 - paddleHeight / 2, width: paddleWidth, height: paddleHeight, color: 'white' };
+        canvas.width = 400;
+        canvas.height = 600;
 
-        // Create the ball
-        const ball = { x: canvas.width / 2, y: canvas.height / 2, size: 10, speed: 5, velocityX: 5, velocityY: 5, color: 'white' };
+        let score = 0;
+        let gameSpeed = 5;
+        let isGameOver = false;
 
-        let playerScore = 0, aiScore = 0;
+        // Player object
+        const player = {
+            x: 175,
+            y: 500,
+            w: 50,
+            h: 50,
+            color: '#ffcc00',
+            lane: 1 // 0: Left, 1: Middle, 2: Right
+        };
 
-        // Control the player paddle
-        document.addEventListener('mousemove', (event) => {
-            const rect = canvas.getBoundingClientRect();
-            playerPaddle.y = event.clientY - rect.top - playerPaddle.height / 2;
-        });
+        const lanes = [75, 175, 275];
 
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'ArrowUp') playerPaddle.dy = -8;
-            if (event.key === 'ArrowDown') playerPaddle.dy = 8;
-        });
+        // Obstacles array
+        let obstacles = [];
 
-        document.addEventListener('keyup', (event) => {
-            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') playerPaddle.dy = 0;
-        });
-
-        // Update game elements
-        function resetBall() {
-            ball.x = canvas.width / 2;
-            ball.y = canvas.height / 2;
-            ball.velocityX = -ball.velocityX;
+        function createObstacle() {
+            const lane = Math.floor(Math.random() * 3);
+            obstacles.push({
+                x: lanes[lane],
+                y: -50,
+                w: 50,
+                h: 50,
+                color: '#ff4d4d'
+            });
         }
 
         function update() {
-            playerPaddle.y += playerPaddle.dy;
-            if (playerPaddle.y < 0) playerPaddle.y = 0;
-            if (playerPaddle.y + playerPaddle.height > canvas.height) playerPaddle.y = canvas.height - playerPaddle.height;
+            if (isGameOver) return;
 
-            aiPaddle.y += (ball.y - (aiPaddle.y + aiPaddle.height / 2)) * 0.1;
-            if (aiPaddle.y < 0) aiPaddle.y = 0;
-            if (aiPaddle.y + aiPaddle.height > canvas.height) aiPaddle.y = canvas.height - aiPaddle.height;
+            // Move player to lane
+            player.x = lanes[player.lane];
 
-            ball.x += ball.velocityX;
-            ball.y += ball.velocityY;
+            // Update obstacles
+            if (Math.random() < 0.02) createObstacle();
 
-            // Ball collision with top and bottom
-            if (ball.y + ball.size > canvas.height || ball.y - ball.size < 0) {
-                ball.velocityY = -ball.velocityY;
-            }
+            obstacles.forEach((obs, index) => {
+                obs.y += gameSpeed;
 
-            // Ball collision with paddles
-            if (ball.x - ball.size < playerPaddle.x + playerPaddle.width &&
-                ball.y > playerPaddle.y && ball.y < playerPaddle.y + playerPaddle.height) {
-                ball.velocityX = -ball.velocityX;
-            }
-            if (ball.x + ball.size > aiPaddle.x &&
-                ball.y > aiPaddle.y && ball.y < aiPaddle.y + aiPaddle.height) {
-                ball.velocityX = -ball.velocityX;
-            }
+                // Collision Detection
+                if (player.x < obs.x + obs.w &&
+                    player.x + player.w > obs.x &&
+                    player.y < obs.y + obs.h &&
+                    player.y + player.h > obs.y) {
+                    isGameOver = true;
+                    alert("Game Over! Score: " + score);
+                    location.reload();
+                }
 
-            // Score update
-            if (ball.x - ball.size < 0) {
-                aiScore++;
-                resetBall();
-            }
-            if (ball.x + ball.size > canvas.width) {
-                playerScore++;
-                resetBall();
-            }
+                // Remove off-screen obstacles
+                if (obs.y > canvas.height) {
+                    obstacles.splice(index, 1);
+                    score++;
+                    scoreElement.innerText = score;
+                    if (score % 10 === 0) gameSpeed += 0.2; // Speed up
+                }
+            });
         }
 
-        // Render the game
         function draw() {
-            // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = playerPaddle.color;
-            ctx.fillRect(playerPaddle.x, playerPaddle.y, playerPaddle.width, playerPaddle.height);
-            ctx.fillStyle = aiPaddle.color;
-            ctx.fillRect(aiPaddle.x, aiPaddle.y, aiPaddle.width, aiPaddle.height);
 
-            ctx.fillStyle = ball.color;
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.size, 0, Math.PI * 2, false);
-            ctx.fill();
+            // Draw Road
+            ctx.fillStyle = '#444';
+            ctx.fillRect(50, 0, 300, canvas.height);
 
-            // Draw the scoreboard
-            ctx.fillStyle = 'white';
-            ctx.font = '20px Arial';
-            ctx.fillText(`Player: ${playerScore}`, 50, 20);
-            ctx.fillText(`AI: ${aiScore}`, canvas.width - 100, 20);
-        }
+            // Draw Player
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.w, player.h);
 
-        function loop() {
+            // Draw Obstacles
+            obstacles.forEach(obs => {
+                ctx.fillStyle = obs.color;
+                ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+            });
+
             update();
-            draw();
-            requestAnimationFrame(loop);
+            requestAnimationFrame(draw);
         }
 
-        loop();
+        // Controls
+        window.addEventListener('keydown', (e) => {
+            if (e.key === "ArrowLeft" && player.lane > 0) player.lane--;
+            if (e.key === "ArrowRight" && player.lane < 2) player.lane++;
+        });
+
+        draw();
     </script>
 </body>
 </html>
